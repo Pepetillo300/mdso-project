@@ -1,0 +1,13 @@
+package com.example.mdsoproject.hello.infrastructure.repository;
+
+import com.example.mdsoproject.hello.infrastructure.entity.HelloEntity;
+import org.springframework.stereotype.Component;
+
+@Component
+public class HelloRepository {
+
+    public String findHello() {
+        HelloEntity e = new HelloEntity("Hola desde arquitectura hexagonal (entity)! (repository)");
+        return e.getMessage();
+    }
+}

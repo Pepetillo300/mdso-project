@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class HelloRepository {
 
     public String findHello() {
-        HelloEntity e = new HelloEntity("Hola desde arquitectura hexagonal (entity)! (repository)");
+        HelloEntity e = new HelloEntity("Hola mundo");
         return e.getMessage();
     }
 }

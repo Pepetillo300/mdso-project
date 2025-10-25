@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_REPO = 'Pepetillo300/mdso-project'
+        DOCKERHUB_REPO = 'pepetillo300/mdso-project'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 

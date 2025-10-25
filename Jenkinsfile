@@ -24,6 +24,7 @@ pipeline {
             steps {
                 sh 'mvn org.owasp:dependency-check-maven:check'
             }
+        }
 
         stage ('Build Docker Image') {
             steps {

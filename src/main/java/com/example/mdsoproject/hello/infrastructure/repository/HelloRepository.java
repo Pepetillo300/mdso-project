@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class HelloRepository {
 
     public String findHello() {
-        HelloEntity e = new HelloEntity("Hola mundo");
+        HelloEntity e = new HelloEntity("Hola mundo ejecucion 2");
         return e.getMessage();
     }
 }

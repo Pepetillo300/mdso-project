@@ -16,10 +16,7 @@ pipeline {
 
         stage('Install & Build') {
             steps {
-                // Instala dependencias y compila
-                sh """
-                    ${MVN_HOME}/bin/mvn clean install -B
-                """
+                sh 'mvn clean install -B'
             }
         }
 

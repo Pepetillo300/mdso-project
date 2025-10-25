@@ -7,10 +7,19 @@ pipeline {
     }
 
     stages {
-        stage ('Checkout Code') {
+        stage('Checkout') {
             steps {
-                echo "Descargando código fuente desde GitHub..."
-                checkout scm
+                // Clona el repositorio
+                git branch: 'develop', url: 'https://github.com/Pepetillo300/mdso-project.git'
+            }
+        }
+
+        stage('Install & Build') {
+            steps {
+                // Instala dependencias y compila
+                sh """
+                    ${MVN_HOME}/bin/mvn clean install -B
+                """
             }
         }
 

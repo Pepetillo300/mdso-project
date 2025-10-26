@@ -60,24 +60,24 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
-                echo "Desplegando aplicación en Minikube sin autenticación..."
+                echo "Desplegando aplicación en Minikube..."
                 sh '''
-                    # Descarga kubectl si no está disponible
+                    # Descargar kubectl si no existe
                     if [ ! -f ./kubectl ]; then
                         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                        chmod +x kubectl
+                        chmod +x ./kubectl
                     fi
 
-                    # Aplica los manifiestos ignorando validación y TLS
+                    # Aplica manifiestos ignorando validación y TLS
                     ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/deployment.yaml
                     ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/service.yaml
 
-                    # Opcional: listar recursos
+                    # Listar recursos para verificar despliegue
                     ./kubectl get pods --insecure-skip-tls-verify
                     ./kubectl get svc --insecure-skip-tls-verify
                 '''
             }
-        }    
+        } 
     }
 
     post {

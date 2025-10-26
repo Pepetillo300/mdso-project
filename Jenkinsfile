@@ -60,28 +60,27 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
-                        sh '''
-                            # Descargar kubectl si no existe
-                            if [ ! -f ./kubectl ]; then
-                                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                                chmod +x ./kubectl
-                            fi
+                withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        # Descargar kubectl si no existe
+                        if [ ! -f ./kubectl ]; then
+                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                            chmod +x ./kubectl
+                        fi
 
-                            # Usar kubeconfig con certificados
-                            export KUBECONFIG=$KUBECONFIG
+                        # Usar kubeconfig con certificados
+                        export KUBECONFIG=$KUBECONFIG
 
-                            ./kubectl version --client
-                            ./kubectl apply -f k8s/deployment.yaml
-                            ./kubectl apply -f k8s/service.yaml
-                            ./kubectl get pods
-                            ./kubectl get svc
-                        '''
-                    }
+                        ./kubectl version --client
+                        ./kubectl apply -f k8s/deployment.yaml
+                        ./kubectl apply -f k8s/service.yaml
+                        ./kubectl get pods
+                        ./kubectl get svc
+                    '''
                 }
             }
         }
+    }
 
     post {
         success {

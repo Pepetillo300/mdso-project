@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tools {
+        maven '3.9.11'
+    }
 
     environment {
         DOCKERHUB_REPO = 'pepetillo300/mdso-project'

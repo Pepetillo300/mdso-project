@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mdso-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mdso
+  template:
+    metadata:
+      labels:
+        app: mdso
+    spec:
+      containers:
+      - name: mdso
+        image: pepetillo300/mdso-project:latest
+        ports:
+        - containerPort: 8085

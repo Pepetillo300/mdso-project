@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mdso-service
+spec:
+  selector:
+    app: mdso
+  type: LoadBalancer
+  ports:
+  - port: 8085
+    targetPort: 8085

@@ -61,7 +61,7 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 echo "Desplegando aplicación en Minikube..."
-                withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'minikube-credentials', variable: 'KUBECONFIG')]) {
                     sh '''
                         echo "Usando kubeconfig: $KUBECONFIG"
                         kubectl config use-context minikube

@@ -66,8 +66,8 @@ pipeline {
                         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                         chmod +x kubectl
                         ./kubectl version --client
-                        ./kubectl --kubeconfig $KUBECONFIG apply -f k8s/deployment.yaml
-                        ./kubectl --kubeconfig $KUBECONFIG apply -f k8s/service.yaml
+                        ./kubectl apply --kubeconfig=$KUBECONFIG -f k8s/deployment.yaml
+                        ./kubectl apply --kubeconfig=$KUBECONFIG -f k8s/service.yaml
                     '''
                 }
             }

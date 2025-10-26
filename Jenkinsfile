@@ -60,25 +60,26 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
-                echo "Desplegando aplicación en Minikube..."
-                sh '''
-                    # Descargar kubectl si no existe
-                    if [ ! -f ./kubectl ]; then
-                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                        chmod +x ./kubectl
-                    fi
+                withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        # Descargar kubectl si no existe
+                        if [ ! -f ./kubectl ]; then
+                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                            chmod +x ./kubectl
+                        fi
 
-                    # Aplica manifiestos ignorando validación y TLS
-                    ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/deployment.yaml
-                    ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/service.yaml
+                        # Usar kubeconfig con certificados
+                        export KUBECONFIG=$KUBECONFIG
 
-                    # Listar recursos para verificar despliegue
-                    ./kubectl get pods --insecure-skip-tls-verify
-                    ./kubectl get svc --insecure-skip-tls-verify
-                '''
+                        ./kubectl version --client
+                        ./kubectl apply -f k8s/deployment.yaml
+                        ./kubectl apply -f k8s/service.yaml
+                        ./kubectl get pods
+                        ./kubectl get svc
+                    '''
+                }
             }
-        } 
-    }
+        }
 
     post {
         success {

@@ -52,13 +52,18 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 echo "Desplegando aplicación en Minikube..."
-                kubernetesDeploy(
-                    configs: 'k8s/*.yaml',
-                    kubeConfig: [credentialsId: 'minikube-credentials'],
-                    enableConfigSubstitution: true
-                )
+                withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh '''
+                        echo "Usando kubeconfig: $KUBECONFIG"
+                        kubectl config use-context minikube
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl apply -f k8s/service.yaml
+                        kubectl get pods
+                        kubectl get svc
+                    '''
+                }
             }
-        }      
+        }     
     }
 
     post {

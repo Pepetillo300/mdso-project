@@ -63,6 +63,7 @@ pipeline {
                 echo "Desplegando aplicación en Minikube..."
                 withCredentials([file(credentialsId: 'minikube-credentials', variable: 'KUBECONFIG')]) {
                     sh '''
+                        ./kubectl apply --validate=false -f k8s/deployment.yaml
                         export KUBECONFIG=$KUBECONFIG_FILE
                         ./kubectl version --client
                         ./kubectl apply -f k8s/deployment.yaml

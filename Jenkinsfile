@@ -63,11 +63,12 @@ pipeline {
                 echo "Desplegando aplicación en Minikube..."
                 withCredentials([file(credentialsId: 'minikube-credentials', variable: 'KUBECONFIG')]) {
                     sh '''
-                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                        chmod +x kubectl
+                        export KUBECONFIG=$KUBECONFIG_FILE
                         ./kubectl version --client
-                        ./kubectl apply --kubeconfig=$KUBECONFIG -f k8s/deployment.yaml
-                        ./kubectl apply --kubeconfig=$KUBECONFIG -f k8s/service.yaml
+                        ./kubectl apply -f k8s/deployment.yaml
+                        ./kubectl apply -f k8s/service.yaml
+                        ./kubectl get pods
+                        ./kubectl get svc
                     '''
                 }
             }

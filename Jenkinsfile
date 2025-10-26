@@ -43,12 +43,17 @@ pipeline {
             steps {
                 echo "Autenticando en Docker Hub..."
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'Docker-hub') {
-                        echo "Subiendo la imagen Docker a Docker Hub..."
-                        //Crear y subir la imagen con la etiqueta del número de build y 'latest'
-                        def app = docker.image("${DOCKERHUB_REPO}:${IMAGE_TAG}")
-                        app.push()
-                        app.push('latest')
+                    withCredentials([usernamePassword(credentialsId: 'Docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "Intentando login en Docker Hub..."
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            
+                            echo "Subiendo imagen ${DOCKERHUB_REPO}:${IMAGE_TAG}..."
+                            docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}
+                            
+                            echo "Subiendo tag latest..."
+                            docker push ${DOCKERHUB_REPO}:latest
+                        '''
                     }
                 }
             }

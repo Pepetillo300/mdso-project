@@ -60,20 +60,24 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
-                echo "Desplegando aplicación en Minikube..."
-                withCredentials([file(credentialsId: 'minikube-credentials', variable: 'KUBECONFIG')]) {
-                    sh '''
-                        ./kubectl apply --validate=false -f k8s/deployment.yaml
-                        export KUBECONFIG=$KUBECONFIG_FILE
-                        ./kubectl version --client
-                        ./kubectl apply -f k8s/deployment.yaml
-                        ./kubectl apply -f k8s/service.yaml
-                        ./kubectl get pods
-                        ./kubectl get svc
-                    '''
-                }
+                echo "Desplegando aplicación en Minikube sin autenticación..."
+                sh '''
+                    # Descarga kubectl si no está disponible
+                    if [ ! -f ./kubectl ]; then
+                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                    fi
+
+                    # Aplica los manifiestos ignorando validación y TLS
+                    ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/deployment.yaml
+                    ./kubectl apply --validate=false --insecure-skip-tls-verify -f k8s/service.yaml
+
+                    # Opcional: listar recursos
+                    ./kubectl get pods --insecure-skip-tls-verify
+                    ./kubectl get svc --insecure-skip-tls-verify
+                '''
             }
-        }     
+        }    
     }
 
     post {

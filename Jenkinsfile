@@ -48,7 +48,17 @@ pipeline {
                     }
                 }
             }
-        } 
+        }
+        stage('Deploy to Minikube') {
+            steps {
+                echo "Desplegando aplicación en Minikube..."
+                kubernetesDeploy(
+                    configs: 'k8s/*.yaml',
+                    kubeConfig: [credentialsId: 'minikube-credentials'],
+                    enableConfigSubstitution: true
+                )
+            }
+        }      
     }
 
     post {

@@ -66,11 +66,14 @@ pipeline {
                     sh '''
                         kubectl config use-context minikube
 
-                        # Actualiza el deployment con la nueva imagen
-                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG}
-
-                        # O si no existe, crea los recursos desde manifests
+                        echo "Aplicando manifiestos de Kubernetes..."
                         kubectl apply -f k8s/
+
+                        echo "Actualizando imagen del deployment..."
+                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || echo "Deployment aún no existe, intentando aplicar de nuevo..."
+
+                        # Espera a que el rollout termine (opcional, pero recomendable)
+                        kubectl rollout status deployment/mdso-deployment --timeout=120s
                     '''
                 }
             }

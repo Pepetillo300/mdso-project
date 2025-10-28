@@ -67,7 +67,7 @@ pipeline {
                         kubectl config use-context minikube
 
                         # Actualiza el deployment con la nueva imagen
-                        kubectl set image deployment/mdso-deployment mdso-container=${DOCKERHUB_REPO}:${IMAGE_TAG}
+                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG}
 
                         # O si no existe, crea los recursos desde manifests
                         kubectl apply -f k8s/

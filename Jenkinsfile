@@ -58,24 +58,19 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy to Minikube') {
             steps {
-                withCredentials([file(credentialsId: 'minikube-kubeconfig', variable: 'KUBECONFIG')]) {
+                echo "Desplegando en Minikube..."
+                script {
                     sh '''
-                        # Descargar kubectl si no existe
-                        if [ ! -f ./kubectl ]; then
-                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                            chmod +x ./kubectl
-                        fi
+                        kubectl config use-context minikube
 
-                        # Usar kubeconfig con certificados
-                        export KUBECONFIG=$KUBECONFIG
+                        # Actualiza el deployment con la nueva imagen
+                        kubectl set image deployment/mdso-deployment mdso-container=${DOCKERHUB_REPO}:${IMAGE_TAG}
 
-                        ./kubectl version --client
-                        ./kubectl apply -f k8s/deployment.yaml
-                        ./kubectl apply -f k8s/service.yaml
-                        ./kubectl get pods
-                        ./kubectl get svc
+                        # O si no existe, crea los recursos desde manifests
+                        kubectl apply -f k8s/
                     '''
                 }
             }

@@ -86,7 +86,7 @@ pipeline {
             steps {
                 script {
                     withKubeConfig(
-                        credentialsId: 'kubeconfig-minikube',            
+                        credentialsId: 'minikube-credentials',            
                         serverUrl: "https://${MINIKUBE_IP}:${MINIKUBE_PORT}",
                         clusterName: 'minikube',                         
                         contextName: 'minikube',                         

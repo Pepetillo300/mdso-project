@@ -86,12 +86,7 @@ pipeline {
             steps {
                 script {
                     withKubeConfig(
-                        credentialsId: 'minikube-credentials',            
-                        serverUrl: "https://${MINIKUBE_IP}:${MINIKUBE_PORT}",
-                        clusterName: 'minikube',                         
-                        contextName: 'minikube',                         
-                        namespace: 'default',                            
-                        caCertificate: ''                                
+                        credentialsId: 'minikube-credentials'                             
                     ) {
                         sh '''
                         echo "Aplicando manifiestos de Kubernetes..."

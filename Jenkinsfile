@@ -8,13 +8,15 @@ pipeline {
     environment {
         DOCKERHUB_REPO = 'pepetillo300/mdso-project'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+        MINIKUBE_IP = '192.168.67.2'
+        MINIKUBE_PORT = '8443'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 // Clona el repositorio
-                git branch: 'develop', url: 'https://github.com/Pepetillo300/mdso-project.git'
+                git branch: 'deployMinikube', url: 'https://github.com/Pepetillo300/mdso-project.git'
             }
         }
 
@@ -59,21 +61,48 @@ pipeline {
             }
         }
 
-        stage('Deploy to Minikube') {
-            steps {
-                echo "Desplegando en Minikube..."
-                script {
+    //     stage('Deploy to Minikube') {
+    //         steps {
+    //             echo "Desplegando en Minikube..."
+    //             script {
+    //                 sh '''
+    //                     kubectl config use-context minikube
+
+    //                     echo "Aplicando manifiestos de Kubernetes..."
+    //                     kubectl apply -f k8s/
+
+    //                     echo "Actualizando imagen del deployment..."
+    //                     kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || echo "Deployment aún no existe, intentando aplicar de nuevo..."
+
+    //                     # Espera a que el rollout termine (opcional, pero recomendable)
+    //                     kubectl rollout status deployment/mdso-deployment --timeout=120s
+    //                 '''
+    //             }
+    //         }
+    //     }
+    // }
+
+    stage('Deploy to Minikube') {
+        steps {
+            script {
+                withKubeConfig(
+                    credentialsId: 'kubeconfig-minikube',            
+                    serverUrl: "https://${MINIKUBE_IP}:${MINIKUBE_PORT}",
+                    clusterName: 'minikube',                         
+                    contextName: 'minikube',                         
+                    namespace: 'default',                            
+                    caCertificate: ''                                
+                ) {
                     sh '''
-                        kubectl config use-context minikube
+                    echo "Aplicando manifiestos de Kubernetes..."
+                    kubectl apply -f k8s/
 
-                        echo "Aplicando manifiestos de Kubernetes..."
-                        kubectl apply -f k8s/
+                    echo "Actualizando imagen del deployment..."
+                    kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || \
+                        echo "Deployment aún no existe, intentando aplicar de nuevo..."
 
-                        echo "Actualizando imagen del deployment..."
-                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || echo "Deployment aún no existe, intentando aplicar de nuevo..."
-
-                        # Espera a que el rollout termine (opcional, pero recomendable)
-                        kubectl rollout status deployment/mdso-deployment --timeout=120s
+                    echo "Esperando rollout..."
+                    kubectl rollout status deployment/mdso-deployment --timeout=120s
                     '''
                 }
             }

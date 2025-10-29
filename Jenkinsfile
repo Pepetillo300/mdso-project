@@ -85,21 +85,18 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 script {
-                    withKubeConfig(
-                        credentialsId: 'minikube-credentials'                             
-                    ) {
-                        sh '''
-                        echo "Aplicando manifiestos de Kubernetes..."
-                        kubectl apply -f k8s/
+                    sh '''
+                    # Descargar kubectl si no existe
+                    if [ ! -f kubectl ]; then
+                        curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                    fi
 
-                        echo "Actualizando imagen del deployment..."
-                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || \
-                            echo "Deployment aún no existe, intentando aplicar de nuevo..."
-
-                        echo "Esperando rollout..."
-                        kubectl rollout status deployment/mdso-deployment --timeout=120s
-                        '''
-                    }
+                    # Aplicar manifiestos usando el kubeconfig de Minikube
+                    ./kubectl --kubeconfig=$HOME/.kube/config apply -f k8s/
+                    ./kubectl --kubeconfig=$HOME/.kube/config set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || echo "Deployment aún no existe"
+                    ./kubectl --kubeconfig=$HOME/.kube/config rollout status deployment/mdso-deployment --timeout=120s
+                    '''
                 }
             }
         }

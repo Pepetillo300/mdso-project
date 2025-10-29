@@ -8,15 +8,13 @@ pipeline {
     environment {
         DOCKERHUB_REPO = 'pepetillo300/mdso-project'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        MINIKUBE_IP = '192.168.67.2'
-        MINIKUBE_PORT = '8443'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 // Clona el repositorio
-                git branch: 'deployMinikube', url: 'https://github.com/Pepetillo300/mdso-project.git'
+                git branch: 'develop', url: 'https://github.com/Pepetillo300/mdso-project.git'
             }
         }
 

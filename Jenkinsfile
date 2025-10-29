@@ -82,33 +82,33 @@ pipeline {
     //     }
     // }
 
-    stage('Deploy to Minikube') {
-        steps {
-            script {
-                withKubeConfig(
-                    credentialsId: 'kubeconfig-minikube',            
-                    serverUrl: "https://${MINIKUBE_IP}:${MINIKUBE_PORT}",
-                    clusterName: 'minikube',                         
-                    contextName: 'minikube',                         
-                    namespace: 'default',                            
-                    caCertificate: ''                                
-                ) {
-                    sh '''
-                    echo "Aplicando manifiestos de Kubernetes..."
-                    kubectl apply -f k8s/
+        stage('Deploy to Minikube') {
+            steps {
+                script {
+                    withKubeConfig(
+                        credentialsId: 'kubeconfig-minikube',            
+                        serverUrl: "https://${MINIKUBE_IP}:${MINIKUBE_PORT}",
+                        clusterName: 'minikube',                         
+                        contextName: 'minikube',                         
+                        namespace: 'default',                            
+                        caCertificate: ''                                
+                    ) {
+                        sh '''
+                        echo "Aplicando manifiestos de Kubernetes..."
+                        kubectl apply -f k8s/
 
-                    echo "Actualizando imagen del deployment..."
-                    kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || \
-                        echo "Deployment aún no existe, intentando aplicar de nuevo..."
+                        echo "Actualizando imagen del deployment..."
+                        kubectl set image deployment/mdso-deployment mdso=${DOCKERHUB_REPO}:${IMAGE_TAG} || \
+                            echo "Deployment aún no existe, intentando aplicar de nuevo..."
 
-                    echo "Esperando rollout..."
-                    kubectl rollout status deployment/mdso-deployment --timeout=120s
-                    '''
+                        echo "Esperando rollout..."
+                        kubectl rollout status deployment/mdso-deployment --timeout=120s
+                        '''
+                    }
                 }
             }
         }
     }
-
     post {
         success {
             echo 'La construcción y subida de la imagen Docker se completó con éxito.'

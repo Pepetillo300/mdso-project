@@ -1,0 +1,107 @@
+# Cloud Build pipeline: build -> push -> deploy -> verify
+#
+# The unit tests are NOT a separate step here: they run inside the Dockerfile's
+# build stage. That is deliberate. It makes it impossible for an image that
+# fails its tests to exist at all, so it can never reach Artifact Registry and
+# therefore can never be rolled out.
+
+substitutions:
+  _REGION: europe-southwest1
+  _ZONE: europe-southwest1-b
+  _REPO: web-apps
+  _CLUSTER: gke-cicd-demo
+  _NAMESPACE: demo
+  _APP: gke-cicd-demo
+
+steps:
+  # 1. Build. Tests run inside the image build; a red test fails this step.
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        IMAGE="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_APP}"
+        docker build \
+          --build-arg APP_VERSION="1.0.0" \
+          --build-arg GIT_SHA="$SHORT_SHA" \
+          --build-arg BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          -t "$${IMAGE}:$SHORT_SHA" \
+          -t "$${IMAGE}:build-$BUILD_ID" \
+          .
+
+  # 2. Push both tags, then record the immutable digest for the deploy step.
+  #    Deploying by digest, not by tag, is what makes "this pod runs this
+  #    commit" a provable statement instead of a hopeful one.
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        IMAGE="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_APP}"
+        docker push "$${IMAGE}:$SHORT_SHA"
+        docker push "$${IMAGE}:build-$BUILD_ID"
+        docker inspect --format='{{index .RepoDigests 0}}' "$${IMAGE}:$SHORT_SHA" \
+          | tee /workspace/image_digest.txt
+        echo "resolved image: $(cat /workspace/image_digest.txt)"
+
+  # 3. Deploy. Substitutes the digest into the manifests and waits for the
+  #    rollout to actually complete. --timeout means a stuck rollout fails the
+  #    build instead of reporting green on a half-finished deploy.
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:stable
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud container clusters get-credentials "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID"
+
+        IMAGE_REF="$(cat /workspace/image_digest.txt)"
+        echo "deploying $${IMAGE_REF}"
+
+        kubectl apply -f k8s/namespace.yaml
+        sed "s|IMAGE_PLACEHOLDER|$${IMAGE_REF}|" k8s/deployment.yaml | kubectl apply -f -
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/autoscaling.yaml
+
+        kubectl -n "${_NAMESPACE}" rollout status "deployment/${_APP}" --timeout=5m
+
+  # 4. Verify from inside the cluster that the live pods report this commit.
+  #    This is the agreed definition of done, enforced by the pipeline rather
+  #    than checked by hand afterwards.
+  - id: verify
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:stable
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud container clusters get-credentials "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID"
+
+        SERVED_SHA="$(kubectl -n ${_NAMESPACE} run smoke-$BUILD_ID \
+          --image=curlimages/curl:8.11.1 --restart=Never --rm -i --quiet \
+          --command -- curl -sf --max-time 10 \
+          http://${_APP}.${_NAMESPACE}.svc.cluster.local/api/info \
+          | tr -d '[:space:]' | sed -n 's/.*"gitSha":"\([^"]*\)".*/\1/p')"
+
+        echo "expected gitSha=$SHORT_SHA  served gitSha=$${SERVED_SHA}"
+        if [ "$${SERVED_SHA}" != "$SHORT_SHA" ]; then
+          echo "FAIL: the live service is not serving this commit"
+          exit 1
+        fi
+        echo "OK: live service is serving $SHORT_SHA"
+
+options:
+  # Required when the build runs as a user-specified service account:
+  # without it the build fails on log-bucket permissions with an error that
+  # does not mention logs at all.
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+timeout: 1200s

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1printf 'node_modules\nnpm-debug.log\n.DS_Store\n' > .gitignore
+# syntax=docker/dockerfile:1
 
 ########################
 # Stage 1: dependencies / test
@@ -12,6 +12,12 @@ COPY app/package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi
 
 COPY app/ ./
+# Normalize permissions. COPY preserves the source file modes, so a 0600 file
+# in the build context produces an image the nonroot runtime user cannot read
+# (EACCES on startup). Make the tree world-readable and directories traversable
+# so the image no longer depends on the developer's local umask.
+RUN chmod -R a+rX /app
+
 # Fail the image build if the smoke tests fail: a broken image never reaches
 # Artifact Registry, so it can never be rolled out to GKE.
 RUN npm test
@@ -34,7 +40,9 @@ ENV APP_VERSION=${APP_VERSION} \
     PORT=8080
 
 WORKDIR /app
-COPY --from=build /app /app
+# --chown is a second, independent guarantee: even if a mode slipped through,
+# the runtime user owns the files.
+COPY --from=build --chown=65532:65532 /app /app
 
 USER 65532:65532
 EXPOSE 8080

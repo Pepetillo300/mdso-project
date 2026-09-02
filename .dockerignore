@@ -1,0 +1,9 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+*.md
+k8s/
+cloudbuild.yaml
+docs/
+.github/

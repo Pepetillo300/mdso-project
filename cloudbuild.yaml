@@ -24,7 +24,7 @@ steps:
         set -euo pipefail
         IMAGE="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_APP}"
         docker build \
-          --build-arg APP_VERSION="1.0.0" \
+          --build-arg APP_VERSION="2.0.0" \
           --build-arg GIT_SHA="$SHORT_SHA" \
           --build-arg BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           -t "$${IMAGE}:$SHORT_SHA" \

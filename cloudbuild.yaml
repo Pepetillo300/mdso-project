@@ -12,8 +12,6 @@ substitutions:
   _CLUSTER: gke-cicd-demo
   _NAMESPACE: demo
   _APP: gke-cicd-demo
-  # Pinned to the cluster's control-plane minor to avoid version skew.
-  _KUBECTL_VERSION: v1.35.7
 
 steps:
   # 1. Build. Tests run inside the image build; a red test fails this step.
@@ -54,24 +52,16 @@ steps:
   #    rollout to actually complete. --timeout means a stuck rollout fails the
   #    build instead of reporting green on a half-finished deploy.
   - id: deploy
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:stable
+    name: gcr.io/cloud-builders/kubectl
     entrypoint: bash
     args:
       - -c
       - |
         set -euo pipefail
 
-        # cloud-sdk:stable ships neither kubectl nor the GKE auth plugin, and
-        # its apt repo does not carry the plugin package under any stable
-        # name. So: fetch the official kubectl binary pinned to the cluster's
-        # version, and authenticate with an OAuth access token instead of the
-        # exec plugin. No apt, no components, no package-name guessing.
-        if ! command -v kubectl >/dev/null 2>&1; then
-          echo "downloading kubectl ${_KUBECTL_VERSION}"
-          curl -sSLf -o /usr/local/bin/kubectl \
-            "https://dl.k8s.io/release/${_KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          chmod +x /usr/local/bin/kubectl
-        fi
+        # This builder ships kubectl and gcloud already, so nothing is
+        # downloaded or installed at build time. cloud-sdk:stable was the
+        # wrong base: it has no kubectl, no auth plugin and no curl.
         kubectl version --client
 
         # Build a kubeconfig by hand. get-credentials would write an exec
@@ -104,24 +94,16 @@ steps:
   #    This is the agreed definition of done, enforced by the pipeline rather
   #    than checked by hand afterwards.
   - id: verify
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk:stable
+    name: gcr.io/cloud-builders/kubectl
     entrypoint: bash
     args:
       - -c
       - |
         set -euo pipefail
 
-        # cloud-sdk:stable ships neither kubectl nor the GKE auth plugin, and
-        # its apt repo does not carry the plugin package under any stable
-        # name. So: fetch the official kubectl binary pinned to the cluster's
-        # version, and authenticate with an OAuth access token instead of the
-        # exec plugin. No apt, no components, no package-name guessing.
-        if ! command -v kubectl >/dev/null 2>&1; then
-          echo "downloading kubectl ${_KUBECTL_VERSION}"
-          curl -sSLf -o /usr/local/bin/kubectl \
-            "https://dl.k8s.io/release/${_KUBECTL_VERSION}/bin/linux/amd64/kubectl"
-          chmod +x /usr/local/bin/kubectl
-        fi
+        # This builder ships kubectl and gcloud already, so nothing is
+        # downloaded or installed at build time. cloud-sdk:stable was the
+        # wrong base: it has no kubectl, no auth plugin and no curl.
         kubectl version --client
 
         # Build a kubeconfig by hand. get-credentials would write an exec

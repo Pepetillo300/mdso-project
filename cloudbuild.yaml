@@ -12,6 +12,8 @@ substitutions:
   _CLUSTER: gke-cicd-demo
   _NAMESPACE: demo
   _APP: gke-cicd-demo
+  # Pinned to the cluster's control-plane minor to avoid version skew.
+  _KUBECTL_VERSION: v1.35.7
 
 steps:
   # 1. Build. Tests run inside the image build; a red test fails this step.
@@ -59,19 +61,34 @@ steps:
       - |
         set -euo pipefail
 
-        # cloud-sdk:stable does not reliably ship kubectl or the GKE auth
-        # plugin. Exit 127 (command not found) is the symptom. Install on
-        # demand instead of assuming.
-        if ! command -v kubectl >/dev/null 2>&1 || ! command -v gke-gcloud-auth-plugin >/dev/null 2>&1; then
-          echo "installing kubectl + gke-gcloud-auth-plugin"
-          apt-get update -qq
-          apt-get install -y -qq kubectl google-cloud-cli-gke-gcloud-auth-plugin
+        # cloud-sdk:stable ships neither kubectl nor the GKE auth plugin, and
+        # its apt repo does not carry the plugin package under any stable
+        # name. So: fetch the official kubectl binary pinned to the cluster's
+        # version, and authenticate with an OAuth access token instead of the
+        # exec plugin. No apt, no components, no package-name guessing.
+        if ! command -v kubectl >/dev/null 2>&1; then
+          echo "downloading kubectl ${_KUBECTL_VERSION}"
+          curl -sSLf -o /usr/local/bin/kubectl \
+            "https://dl.k8s.io/release/${_KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x /usr/local/bin/kubectl
         fi
         kubectl version --client
-        gke-gcloud-auth-plugin --version
 
-        gcloud container clusters get-credentials "${_CLUSTER}" \
-          --zone "${_ZONE}" --project "$PROJECT_ID"
+        # Build a kubeconfig by hand. get-credentials would write an exec
+        # stanza that requires gke-gcloud-auth-plugin; a bearer token does not.
+        ENDPOINT="$(gcloud container clusters describe "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID" --format='value(endpoint)')"
+        gcloud container clusters describe "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID" \
+          --format='value(masterAuth.clusterCaCertificate)' | base64 -d > /workspace/ca.crt
+
+        kubectl config set-cluster gke \
+          --server="https://$${ENDPOINT}" \
+          --certificate-authority=/workspace/ca.crt --embed-certs=true
+        kubectl config set-credentials cloudbuild \
+          --token="$(gcloud auth print-access-token)"
+        kubectl config set-context gke --cluster=gke --user=cloudbuild
+        kubectl config use-context gke
 
         IMAGE_REF="$(cat /workspace/image_digest.txt)"
         echo "deploying $${IMAGE_REF}"
@@ -94,19 +111,34 @@ steps:
       - |
         set -euo pipefail
 
-        # cloud-sdk:stable does not reliably ship kubectl or the GKE auth
-        # plugin. Exit 127 (command not found) is the symptom. Install on
-        # demand instead of assuming.
-        if ! command -v kubectl >/dev/null 2>&1 || ! command -v gke-gcloud-auth-plugin >/dev/null 2>&1; then
-          echo "installing kubectl + gke-gcloud-auth-plugin"
-          apt-get update -qq
-          apt-get install -y -qq kubectl google-cloud-cli-gke-gcloud-auth-plugin
+        # cloud-sdk:stable ships neither kubectl nor the GKE auth plugin, and
+        # its apt repo does not carry the plugin package under any stable
+        # name. So: fetch the official kubectl binary pinned to the cluster's
+        # version, and authenticate with an OAuth access token instead of the
+        # exec plugin. No apt, no components, no package-name guessing.
+        if ! command -v kubectl >/dev/null 2>&1; then
+          echo "downloading kubectl ${_KUBECTL_VERSION}"
+          curl -sSLf -o /usr/local/bin/kubectl \
+            "https://dl.k8s.io/release/${_KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x /usr/local/bin/kubectl
         fi
         kubectl version --client
-        gke-gcloud-auth-plugin --version
 
-        gcloud container clusters get-credentials "${_CLUSTER}" \
-          --zone "${_ZONE}" --project "$PROJECT_ID"
+        # Build a kubeconfig by hand. get-credentials would write an exec
+        # stanza that requires gke-gcloud-auth-plugin; a bearer token does not.
+        ENDPOINT="$(gcloud container clusters describe "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID" --format='value(endpoint)')"
+        gcloud container clusters describe "${_CLUSTER}" \
+          --zone "${_ZONE}" --project "$PROJECT_ID" \
+          --format='value(masterAuth.clusterCaCertificate)' | base64 -d > /workspace/ca.crt
+
+        kubectl config set-cluster gke \
+          --server="https://$${ENDPOINT}" \
+          --certificate-authority=/workspace/ca.crt --embed-certs=true
+        kubectl config set-credentials cloudbuild \
+          --token="$(gcloud auth print-access-token)"
+        kubectl config set-context gke --cluster=gke --user=cloudbuild
+        kubectl config use-context gke
 
         SERVED_SHA="$(kubectl -n ${_NAMESPACE} run smoke-$BUILD_ID \
           --image=curlimages/curl:8.11.1 --restart=Never --rm -i --quiet \

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gke-cicd-demo
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: gke-cicd-demo
+  annotations:
+    # Backend-service based external L4 load balancer. It supports the
+    # subsetting and failover features the older target-pool implementation
+    # lacks, and it is the direction GKE is moving in.
+    cloud.google.com/l4-rbs: "enabled"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: gke-cicd-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
